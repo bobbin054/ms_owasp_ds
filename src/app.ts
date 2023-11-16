@@ -48,7 +48,7 @@ app.post("/api/owasp-dependency-check", async (request, res) => {
     console.log(gitCommandStderr);
     console.log(`Running owasp dependency-check on: ${gitUrl}`);
     const { stdout: owaspCommandStdout, stderr: owaspCommandStderr } = await execAsync(
-      `dependency-check.sh --project "Dependency Check" --scan ${tempDir} ` + `--out ${tempDir} --format "JSON"`
+      `dependency-check.sh --project "Dependency Check" --scan ${tempDir} --out ${tempDir} --format "JSON"`
     );
     console.log(`${owaspCommandStderr}`);
     // Read the JSON report
