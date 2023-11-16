@@ -1,0 +1,4 @@
+/dist
+/dockerfile_az_func
+/node_modules
+/package-lock.json
