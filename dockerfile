@@ -1,7 +1,7 @@
-# Use the official Node.js image based on Alpine Linux
+# A minimal Docker image based on Alpine Linux with a complete package index and only 5 MB in size!
 FROM alpine
 
-# Update the package index and install necessary packages in one step
+# Update the package index, install necessary packages and clean up
 RUN apk update && \
     apk add nodejs npm bash git openjdk11 unzip && \
     rm -rf /var/cache/apk/*
@@ -16,6 +16,12 @@ RUN wget -O /opt/dependency-check-8.4.2-release.zip https://github.com/jeremylon
 
 # Set the OWASP Dependency-Check environment variables
 ENV PATH="/opt/dependency-check/bin:${PATH}"
+# Set the OWASP Dependency-Check data directory
+ENV DEPENDENCY_CHECK_DATA_DIR="/opt/dependency-check/data"
+# Create a volume for OWASP Dependency-Check data
+VOLUME ["${DEPENDENCY_CHECK_DATA_DIR}"]
+# Disable git interactive prompt
+ENV GIT_TERMINAL_PROMPT=0
 
 # Copy package.json to the working directory
 COPY package.json ./
@@ -23,7 +29,7 @@ COPY package.json ./
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the application files
+# Copy application files
 COPY tsconfig.json .
 COPY src ./src
 
@@ -35,3 +41,4 @@ EXPOSE 3000
 
 # Command to run the application
 CMD ["npm", "start"]
+

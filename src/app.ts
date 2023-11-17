@@ -1,8 +1,9 @@
 import express from "express";
 import path from "path";
-import { exec } from "child_process";
+import { spawn, exec } from "child_process";
 import * as util from "util";
 import * as fs from "fs/promises";
+
 const app = express();
 const port = 3000;
 
@@ -10,7 +11,7 @@ type RequestBody = {
   gitUrl: string;
 };
 
-// Promisify exec for async/await usage
+const spawnAsync = util.promisify(spawn);
 const execAsync = util.promisify(exec);
 
 // Add this line to enable JSON parsing middleware
@@ -33,6 +34,8 @@ app.post("/api/owasp-dependency-check", async (request, res) => {
   if (!requestJson) {
     res.status(400).send("Bad Request: Missing request body");
   }
+  // Set the OWASP Dependency-Check data directory
+  const dependencyCheckDataDir = process.env.DEPENDENCY_CHECK_DATA_DIR || "/opt/dependency-check/data";
 
   const { gitUrl } = requestJson as RequestBody;
   console.log(`gitUrl: ${gitUrl}`);
@@ -43,18 +46,47 @@ app.post("/api/owasp-dependency-check", async (request, res) => {
   console.log(`reportPath: ${reportPath}`);
 
   try {
-    console.log(`Cloning git repository: ${gitUrl}`);
     const { stdout: gitCommandStdout, stderr: gitCommandStderr } = await execAsync(`git clone ${gitUrl} ${tempDir}`);
-    console.log(gitCommandStderr);
+
     console.log(`Running owasp dependency-check on: ${gitUrl}`);
-    const { stdout: owaspCommandStdout, stderr: owaspCommandStderr } = await execAsync(
-      `dependency-check.sh --project "Dependency Check" --scan ${tempDir} --out ${tempDir} --format "JSON"`
-    );
-    console.log(`${owaspCommandStderr}`);
+
+    // Use spawn to run the command
+    const dependencyCheckProcess = spawn("dependency-check.sh", [
+      "--project",
+      "Dependency Check",
+      "--scan",
+      tempDir,
+      "--out",
+      tempDir,
+      "--format",
+      "JSON",
+    ]);
+
+    // Capture and stream stdout and stderr
+    dependencyCheckProcess.stdout.on("data", (data) => {
+      console.log(`Dependency Check stdout: ${data}`);
+    });
+    dependencyCheckProcess.stderr.on("data", (data) => {
+      console.error(`Dependency Check stderr: ${data}`);
+    });
+
+    // Wait for the process to exit
+    const exitCode: number | null = await new Promise((resolve) => {
+      dependencyCheckProcess.on("close", (code) => resolve(code));
+    });
+
+    if (exitCode !== 0) {
+      console.error(`Dependency Check process exited with code ${exitCode}`);
+      return res.status(500).send(`Dependency Check process exited with code ${exitCode}`);
+    }
+
     // Read the JSON report
     const report = await fs.readFile(reportPath, "utf8");
     console.log(`Report: ${report}`);
+
+    // Clean up
     execAsync(`rm -rf ${tempDir}`);
+
     return res.status(201).contentType("application/json").send(report);
   } catch (err) {
     if (err instanceof Error) {
