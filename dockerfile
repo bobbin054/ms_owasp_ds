@@ -42,3 +42,5 @@ EXPOSE 3000
 # Command to run the application
 CMD ["npm", "start"]
 
+# docker build -t alpine .
+# docker run --rm -it -p 3000:3000 -v owasp_data:/opt/dependency-check/data alpine bash
