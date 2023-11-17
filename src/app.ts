@@ -15,7 +15,9 @@ const execAsync = promisify(exec);
 app.use(express.json());
 
 app.get("/", (_req, res) => {
-  res.send("Hello, World!");
+  res.send(
+    "owasp-dependency-check. To use this API, send a POST request to /api/owasp-dependency-check with a JSON body containing a gitUrl property."
+  );
 });
 
 app.post("/api/owasp-dependency-check", async (request, res) => {
@@ -26,7 +28,7 @@ app.post("/api/owasp-dependency-check", async (request, res) => {
   }
   const { gitUrl } = request.body as RequestBody;
   console.log(`gitUrl: ${gitUrl}`);
-  const tempDir = `/tmp/gitrepos/${request.ip}`;
+  const tempDir = `/tmp/gitrepos/${request.body.gitUrl.replace(/[^a-zA-Z0-9]/g, "")}`;
   console.log(`tempDir: ${tempDir}`);
   const reportPath = path.join(tempDir, "dependency-check-report.json");
   console.log(`reportPath: ${reportPath}`);
